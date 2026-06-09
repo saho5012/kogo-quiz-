@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>古語クイズ🐒</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Hiragino Kaku Gothic ProN',sans-serif;background:#FDF5EC;min-height:100vh;color:#3D2B1F;max-width:480px;margin:0 auto}
+.screen{display:none;padding:20px;min-height:100vh}
+.screen.active{display:flex;flex-direction:column}
+
+/* タイトル画面 */
+#s-title{align-items:center;justify-content:center;text-align:center;gap:16px}
+.title-icon{font-size:72px;animation:bounce 1.2s infinite}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.title-text{font-size:28px;font-weight:900;color:#8B4513;letter-spacing:2px}
+.title-sub{font-size:14px;color:#A0714F;margin-top:-8px}
+.mode-label{font-size:13px;color:#A0714F;margin-top:8px;font-weight:700;letter-spacing:1px}
+.btn{width:100%;padding:16px;border:none;border-radius:20px;font-size:17px;font-weight:700;cursor:pointer;transition:all .15s;font-family:inherit}
+.btn:active{transform:scale(.96)}
+.btn-primary{background:#C67B46;color:#fff;box-shadow:0 4px 0 #8B4513}
+.btn-primary:active{box-shadow:none;transform:translateY(4px)}
+.btn-green{background:#6BBF6B;color:#fff;box-shadow:0 4px 0 #4A9A4A}
+.btn-green:active{box-shadow:none;transform:translateY(4px)}
+.btn-wrong{background:#E8A87C;color:#fff;box-shadow:0 4px 0 #C67B46}
+.btn-wrong:active{box-shadow:none;transform:translateY(4px)}
+.wrong-count{font-size:12px;opacity:.85}
+
+/* クイズ画面 */
+#s-quiz{gap:12px}
+.progress-bar{width:100%;height:8px;background:#E8D5C4;border-radius:4px;overflow:hidden}
+.progress-fill{height:100%;background:linear-gradient(90deg,#C67B46,#E8A87C);border-radius:4px;transition:width .4s}
+.status-row{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:#A0714F}
+.streak{color:#FF6B35;font-weight:900;font-size:15px}
+.q-card{background:#FFFAF4;border-radius:20px;padding:20px;box-shadow:0 2px 12px rgba(139,69,19,.1);line-height:2;font-size:17px}
+.q-card u{text-decoration:underline;text-decoration-color:#C67B46;text-decoration-thickness:2px;font-weight:700;color:#8B4513}
+.source-tag{font-size:12px;color:#A0714F;background:#F0E6D6;padding:2px 10px;border-radius:20px;display:inline-block;margin-top:8px}
+.choices{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px}
+.choice-btn{background:#FFFAF4;border:2.5px solid #E8D5C4;border-radius:16px;padding:14px 10px;font-size:15px;font-weight:700;cursor:pointer;transition:all .15s;font-family:inherit;color:#3D2B1F;text-align:center;min-height:60px;display:flex;align-items:center;justify-content:center;line-height:1.4}
+.choice-btn:active{transform:scale(.95)}
+.choice-btn.correct{background:#D4F5D4;border-color:#6BBF6B;color:#2D7A2D}
+.choice-btn.wrong{background:#FFD4D4;border-color:#FF6B6B;color:#B00}
+.choice-btn.disabled{pointer-events:none;opacity:.5}
+.choice-btn.show-correct{background:#D4F5D4;border-color:#6BBF6B;color:#2D7A2D}
+
+/* 答え画面 */
+#s-answer{gap:14px}
+.result-badge{text-align:center;font-size:48px;padding:10px 0}
+.result-text{text-align:center;font-size:20px;font-weight:900}
+.result-text.ok{color:#2D7A2D}
+.result-text.ng{color:#CC0000}
+.ans-card{background:#FFFAF4;border-radius:20px;padding:20px;box-shadow:0 2px 12px rgba(139,69,19,.1);line-height:2;font-size:16px}
+.ans-card .ans-highlight{color:#CC0000;text-decoration:underline;text-decoration-color:#CC0000;text-decoration-thickness:2px;font-weight:700}
+.ans-label{font-size:12px;color:#A0714F;font-weight:700;margin-bottom:4px}
+.next-btn{margin-top:auto}
+
+/* 結果画面 */
+#s-result{align-items:center;justify-content:center;text-align:center;gap:16px}
+.big-score{font-size:64px;font-weight:900;color:#8B4513}
+.score-msg{font-size:18px;color:#A0714F}
+.result-detail{background:#FFFAF4;border-radius:20px;padding:16px 24px;width:100%;box-shadow:0 2px 12px rgba(139,69,19,.1)}
+.result-row{display:flex;justify-content:space-between;padding:6px 0;font-size:15px;border-bottom:1px solid #F0E6D6}
+.result-row:last-child{border:none}
+
+ruby{ruby-align:center}
+rt{font-size:10px;color:#A0714F}
+</style>
+</head>
+<body>
+
+<!-- タイトル画面 -->
+<div id="s-title" class="screen active">
+  <div class="title-icon">🐒</div>
+  <div class="title-text">古語クイズ</div>
+  <div class="title-sub">棒線部の意味を選ぼう！</div>
+  <div style="height:8px"></div>
+  <div class="mode-label">📚 モードを選んでね</div>
+  <button class="btn btn-primary" onclick="startQuiz('casual')">⚡ お気軽15問モード</button>
+  <button class="btn btn-green" onclick="startQuiz('all')">📖 全問チャレンジモード</button>
+  <button class="btn btn-wrong" id="btn-wrong" onclick="startQuiz('wrong')">
+    ❌ 間違い直しモード<br><span class="wrong-count" id="wrong-count-label"></span>
+  </button>
+</div>
+
+<!-- クイズ画面 -->
+<div id="s-quiz" class="screen">
+  <div class="status-row">
+    <span id="q-counter">1 / 15</span>
+    <span>🏆 <span id="score-disp">0</span>点</span>
+    <span class="streak" id="streak-disp"></span>
+  </div>
+  <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+  <div class="q-card">
+    <div id="q-sentence"></div>
+    <div style="margin-top:6px"><span class="source-tag" id="q-source"></span></div>
+  </div>
+  <div class="choices" id="choices"></div>
+</div>
+
+<!-- 答え画面 -->
+<div id="s-answer" class="screen">
+  <div class="result-badge" id="ans-badge"></div>
+  <div class="result-text" id="ans-result-text"></div>
+  <div>
+    <div class="ans-label">📜 原文</div>
+    <div class="ans-card" id="ans-sentence"></div>
+  </div>
+  <div>
+    <div class="ans-label">💡 現代語訳</div>
+    <div class="ans-card" id="ans-translation"></div>
+  </div>
+  <button class="btn btn-primary next-btn" id="next-btn" onclick="nextQuestion()">次の問題 →</button>
+</div>
+
+<!-- 結果画面 -->
+<div id="s-result" class="screen">
+  <div class="title-icon">🏆</div>
+  <div class="big-score" id="final-score"></div>
+  <div class="score-msg" id="final-msg"></div>
+  <div class="result-detail">
+    <div class="result-row"><span>正解数</span><span id="res-correct"></span></div>
+    <div class="result-row"><span>不正解数</span><span id="res-wrong"></span></div>
+    <div class="result-row"><span>最大連続正解</span><span id="res-streak"></span></div>
+  </div>
+  <button class="btn btn-primary" onclick="showTitle()" style="width:100%">🏠 タイトルに戻る</button>
+  <button class="btn btn-wrong" onclick="startQuiz('wrong')" style="width:100%" id="res-wrong-btn"></button>
+</div>
+
+<script>
+const Q = [
+  // あはれなり
+  {w:'あはれなり',s:'月のいと明かきおもてに薄き雲、[[あはれなり]]。',src:'枕',t:'月のたいそう明るい面に薄き雲（がかかって）いるのは、[[しみじみと趣深い]]。',a:'しみじみと趣深い'},
+  {w:'あはれなり',s:'中納言悩みて失せぬ。いといとほしう[[あはれなり]]。',src:'増鏡',t:'中納言が病気になって亡くなった。たいそう気の毒で[[しみじみと悲しい]]。',a:'しみじみと悲しい'},
+  // おろかなり
+  {w:'おろかなり',s:'帝の御使ひを、いかでか[[おろか]]にせむ。',src:'竹取',t:'帝のご使者を、どうして[[おろそかに]]もてなそうか、いやしない。',a:'おろそかに'},
+  {w:'おろかなり',s:'至りて[[おろかなる]]人は、たまたま賢なる人を見て、これを憎む。',src:'徒然',t:'きわめて[[愚かな]]人は、たまたま賢い人に会うと、この人を憎む。',a:'愚かな'},
+  // をこなり
+  {w:'をこなり',s:'<ruby>君達<rt>きみだち</rt></ruby>は<ruby>元輔<rt>もとすけ</rt></ruby>がこの馬から落ちて、冠落としたるを[[をこなり]]とや思ひ給ふ。',src:'今昔',t:'あなた方は元輔がこの馬から落ちて、冠を落としたのを[[愚かだ]]と思いなさるのか。',a:'愚かだ'},
+  // あてなり
+  {w:'あてなり',s:'[[あてなる]]女の尼になりて、世の中を思ひんじて、京にもあらず、はるかなる山里に住みけり。',src:'伊勢',t:'[[高貴な]]女が尼になって、世の中をいやに思って、京にもいず、はるか遠い山里に住んだ。',a:'高貴な'},
+  {w:'あてなり',s:'髪のかかり給へるそば目、言ひ知らず[[あて]]にらうたげなり。',src:'源氏',t:'髪がおかかりになっている横顔は、言いようもなく[[上品で]]かわいらしい様子である。',a:'上品で'},
+  // あながちなり
+  {w:'あながちなり',s:'桜の散らんは、[[あながちに]]いかがせん、苦しからず。',src:'宇治',t:'桜が散ることは、[[強引に]]どうにかすることもできないので、さしつかえない。',a:'強引に'},
+  {w:'あながちなり',s:'春宮の女御は、[[あながちなり]]と憎み聞こえ給ふ。',src:'源氏',t:'春宮の女御は、[[度が過ぎている]]と非難申し上げなさる。',a:'度が過ぎている'},
+  {w:'あながちなり',s:'盗人といふ者、[[あながちに]]外より来たりて物を取るばかりにはあらず。',src:'浮世',t:'盗人という者は、[[必ずしも]]外から来て物を取るだけではない。',a:'必ずしも'},
+  {w:'あながちなり',s:'この人々、[[あながちに]]こころざし見えありく。',src:'竹取',t:'この人々は、[[むやみに]]愛情を見せて回る。',a:'むやみに'},
+  // せちなり
+  {w:'せちなり',s:'七月十五日の月にいでゐて、[[せちに]]物思へるけしきなり。',src:'竹取',t:'七月十五日の月に（縁側に）出て座って、[[切実に]]物思いをしている様子である。',a:'切実に'},
+  {w:'せちなり',s:'大納言、宰相もろともに、しのびてものし給へ。[[せちなる]]ことと聞こえむ。',src:'宇津保',t:'大納言や、宰相と一緒に、こっそりお越しください。[[大切な]]ことを申し上げよう。',a:'大切な'},
+  // いたづらなり
+  {w:'いたづらなり',s:'この庭の[[いたづらに]]広きこと、あさましく、あるべからぬことなり。',src:'徒然',t:'この庭が[[無駄で]]広いことは、あきれたことで、あってはならないことだ。',a:'無駄で'},
+  {w:'いたづらなり',s:'船も出ださで[[いたづらなれば]]、ある人の詠める',src:'土佐',t:'船も出さないで[[ひまなので]]、ある人が詠んだ',a:'ひまなので'},
+  // みそかなり
+  {w:'みそかなり',s:'親しき人のもとへ行き通ひけるほどに、娘を思ひかけて、[[みそかに]]通ひありきけり。',src:'堤',t:'（男が）親しい人のもとに通っていたうちに、娘に恋をして、[[ひそかに]]通い続けていた。',a:'ひそかに'},
+  // つれづれなり
+  {w:'つれづれなり',s:'雨いたう降りて[[つれづれなり]]とて、殿上人、上の御局に召して御遊びあり。',src:'枕',t:'雨がひどく降って[[退屈だ]]と言って、殿上人を、中宮のお部屋にお呼びになり管弦の宴がある。',a:'退屈だ'},
+  {w:'つれづれなり',s:'そこはかとなく[[つれづれに]]心細うのみ覚ゆるを、',src:'源氏',t:'何となく[[物寂しく]]、心細いとばかり思われるのを、',a:'物寂しく'},
+  // おもかげ
+  {w:'おもかげ',s:'板間より漏り来る月の[[影]]のみぞ、昔に変はらぬあはれなり。',src:'義経',t:'板屋根の間を通って漏れてくる月の[[光]]だけが、昔と変わらずしみじみとした趣がある。',a:'光'},
+  {w:'おもかげ',s:'虎つづまりゐて、物をうかがふ。その[[影]]、水にうつりたり。',src:'宇治',t:'虎がうずくまって座っていて、様子をうかがう。その[[姿]]が、水に映っている。',a:'姿'},
+  {w:'おもかげ',s:'母<ruby>御息所<rt>みやすどころ</rt></ruby>も、[[影]]だにおぼえ給はぬを、',src:'源氏',t:'（源氏は）母である御息所のことも、[[面影]]さえ覚えていらっしゃらないが、',a:'面影'},
+  // つとめて
+  {w:'つとめて',s:'十五日の[[つとめて]]は、深草の法華堂に参りたるに、',src:'とはず',t:'十五日の[[早朝]]は、深草の法華堂にお参りしたところ、',a:'早朝'},
+  {w:'つとめて',s:'ひと日ひと夜よろづのことを言ひ語らひて、[[つとめて]]舟に乗りぬ。',src:'大和',t:'一昼夜さまざまなことをずっと語り合って、[[翌朝]]舟に乗った。',a:'翌朝'},
+  // かたち
+  {w:'かたち',s:'まみ口つき、いと愛敬づき、はなやかなる[[かたち]]なり。',src:'源氏',t:'目もとや口もとが、たいそうかわいらしさが備わり、華やかな[[容貌]]である。',a:'容貌'},
+  // けしき
+  {w:'けしき',s:'「今日、風雲の[[けしき]]はなはだ悪し。」と言ひて、船出ださずなりぬ。',src:'土佐',t:'「今日は、風や雲の[[様子]]がたいそう悪い。」と言って、船を出さなくなった。',a:'様子'},
+  {w:'けしき',s:'帝の御[[けしき]]悪しくして、「さては臣が所為か。」と仰せられければ',src:'十訓',t:'帝の[[ご機嫌]]が悪くて、「さてはお前の仕業か。」とおっしゃったので、',a:'ご機嫌'},
+  {w:'けしき',s:'新大納言、[[けしき]]変はりて、さと立たれけるが、',src:'平家',t:'新大納言は、[[顔色]]が変わって、さっと立たれたが、',a:'顔色'},
+  // せうそこ
+  {w:'せうそこ',s:'いで、御[[消息]]聞こえむ。',src:'源氏',t:'さあ、源氏の君に[[ご挨拶]]を申し上げよう。',a:'ご挨拶'},
+  {w:'せうそこ',s:'「今日のうちに必ず来たれ。」といふ[[消息]]を書きて、',src:'今昔',t:'「今日中に必ず来い。」という[[手紙]]を書いて、',a:'手紙'},
+  {w:'せうそこ',s:'かの一宿のあるじが荘に立ち寄りて、僧が[[消息]]を尋ね給ふ。',src:'雨月',t:'あの一晩泊まった主人の家に立ち寄って、僧の[[ありさま]]をお尋ねになる。',a:'ありさま'},
+  // うつつ
+  {w:'うつつ',s:'夢かと思ひなさんとすれば[[うつつ]]なり。',src:'平家',t:'夢かと思おうとすると[[現実]]である。',a:'現実'},
+  {w:'うつつ',s:'[[うつつ]]にも似ず、たけく厳きひたぶる心出で来て、',src:'源氏',t:'物の怪に取りつかれた六条御息所は、[[正気]]にも似つかず、荒々しく激しい一途な心が生じて、',a:'正気'},
+  // こと
+  {w:'こと（異なる）',s:'唐土とこの国とは、[[ことこと]]なるものなれど、',src:'土佐',t:'中国と日本とは、[[言葉は異なる]]ものだけれど、',a:'言葉は異なる'},
+  {w:'こと（他の）',s:'また[[ことところ]]に、かぐや姫と申す人ぞおはすらむ。',src:'竹取',t:'また[[他の場所]]に、かぐや姫と申し上げる方がいらっしゃるのだろう。',a:'他の場所'},
+  {w:'こと（特に）',s:'行きて見るに、聖のさま、[[ことに]]尊くめでたし。',src:'宇治',t:'行って見ると、聖の様子は、[[特に]]尊くすばらしい。',a:'特に'},
+  // としごろ
+  {w:'としごろ',s:'昔、久しくおくなふ上人ありけり、五穀を断ちて[[年ごろ]]になりぬ。',src:'宇治',t:'昔、長い間仏道修行をする上人がいた。五穀を絶って[[長年]]になった。',a:'長年'},
+  {w:'としごろ',s:'<ruby>御息所<rt>みやすどころ</rt></ruby>は、ものをおぼし乱るること、[[年ごろ]]よりも多く添ひにけり。',src:'源氏',t:'六条御息所は、物事を思い悩みなさることが、[[ここ数年]]よりも多く加わった。',a:'ここ数年'},
+  // ひごろ
+  {w:'ひごろ',s:'[[日ごろ]]長雨降りて、少し晴れ間見ゆるほど、',src:'増鏡',t:'[[ここ数日]]長雨が降って、（その後）少し晴れ間が見える頃、',a:'ここ数日'},
+  {w:'ひごろ',s:'[[日ごろ]]は何ともおぼえぬ鎧が、今日は重くなったるぞや。',src:'平家',t:'[[普段]]は何とも感じない鎧が、今日は重くなったことだなあ。',a:'普段'},
+  // うち
+  {w:'うち（内）',s:'季直少将といふ人ありけり。病つきて後、少しおこたりて[[内]]に参りたりけり。',src:'宇治',t:'季直少将という人がいた。病気になった後、少しよくなって[[宮中]]に参上した。',a:'宮中'},
+  {w:'うち（内）',s:'[[内]]の御悩みのことありて、いと世の中もの騒がし。',src:'栄花',t:'[[帝]]のご病気のことがあって、たいそう世の中が騒がしい。',a:'帝'},
+  // くもい
+  {w:'くもい',s:'鶴はいとこちたきさまなれど、鳴く声[[雲居]]まで聞こゆる、いとめでたし。',src:'枕',t:'鶴はとても仰々しい姿だが、鳴く声が[[天]]まで聞こえるというのが、とてもすばらしい。',a:'天'},
+  {w:'くもい',s:'かかからん世には、[[雲居]]に跡をとどめても何にかはしき候ふべき。',src:'平家',t:'このような世の中では、[[宮中]]に残っても何になりましょうか、いやどうにもなりません。',a:'宮中'},
+  // なさけ
+  {w:'なさけ',s:'[[なさけ]]ある人にて、瓶に花をさせり。',src:'伊勢',t:'（在原行平は）[[風流心]]のある人で、瓶に花をさせていた。',a:'風流心'},
+  {w:'なさけ',s:'よろづのことよりも[[なさけ]]あるこそ、男はさらなり、女もめでたくおぼゆれ。',src:'枕',t:'どんなことよりも[[思いやり]]があるのが、男は言うまでもなく、女もすばらしいと思われる。',a:'思いやり'},
+  // て（手）
+  {w:'て（手）',s:'この子、大人になるままに、[[手]]をめでたく書けり。',src:'宇治',t:'この子は、大人になるにつれて、[[文字]]を上手に書いた。',a:'文字'},
+  {w:'て（手）',s:'琵琶、箏の琴、和琴どもを、一に調べ合はせて、おもしろき[[手]]を弾く。',src:'宇津保',t:'琵琶、箏の琴、和琴などを、一つに調子を合わせて、すばらしい[[曲]]を弾く。',a:'曲'},
+  {w:'て（手）',s:'平氏の軍兵、やにはに五百余騎討たれぬ。[[手]]負ふ者ども多かりけり。',src:'平家',t:'平氏の軍兵は、たちまち五百余騎討たれた。[[傷を負う]]者たちが多かった。',a:'傷を負う'},
+  // よ（世）
+  {w:'よ（世）',s:'これも鬼の仕業にやとぞ[[世]]の人おぢける。',src:'著聞集',t:'これも鬼の仕業であろうかと[[世間]]の人々は怖がった。',a:'世間'},
+  {w:'よ（世）',s:'[[世の中]]心憂し。なほ男せじ。',src:'大和',t:'[[男女の仲]]はつらい。やはり男と情を交わすまい。',a:'男女の仲'},
+  // あいぎょう
+  {w:'あいぎょう',s:'うち笑み給へる御[[愛敬]]、所せきまでこぼれぬべし。',src:'源氏',t:'ふと笑いなさっている[[おかわいらしさ]]が、あたりいっぱいにこぼれてしまいそうだ。',a:'おかわいらしさ'},
+  {w:'あいぎょう',s:'[[愛敬]]ありて、言葉多からぬこそ、飽かず向かはまほしけれ。',src:'徒然',t:'[[思いやり]]があって、口数が多くない人こそ、嫌にならず向かい合っていたい。',a:'思いやり'},
+  // きわ
+  {w:'きわ',s:'いふかひなき[[際]]の人はまだ見ず。',src:'源氏',t:'取るに足りない[[身分]]の人とはまだ知り合ったことがない。',a:'身分'},
+  {w:'きわ',s:'<ruby>母屋<rt>もや</rt></ruby>の[[際]]にかけたる<ruby>簾<rt>すだれ</rt></ruby>を下ろして、ほかに火をばともしたり。',src:'宇治',t:'母屋の[[端]]にかけた簾を下ろして、簾の外側に火をともしている。',a:'端'},
+  {w:'きわ',s:'中納言あく[[際]]に、我もならむなど思して、',src:'大鏡',t:'中納言に欠員ができる[[時]]に、自分もなろうなどとお思いになって、',a:'時'},
+  {w:'きわ',s:'いと心恥づかしげに、[[際]]もなくあてなるさましたまへり。',src:'紫',t:'（宣旨の君という女房は）本当にこちらが恥ずかしくなるほど立派な様子で、[[限り]]もなく上品な様子をなさっている。',a:'限り'},
+  // ほど
+  {w:'ほど',s:'すなはち死する者あり、[[ほど]]経て死ぬる者もあり、',src:'平家',t:'すぐに死ぬ者もおり、[[間が経って]]死ぬ者もある。',a:'間が経って'},
+  {w:'ほど',s:'<ruby>右近<rt>うこん</rt></ruby>が家は六条院近きわたりなりければ、[[ほど]]遠からで、',src:'源氏',t:'右近の家は六条院に近いあたりだったので、[[距離は]]遠くなく、',a:'距離は'},
+  {w:'ほど',s:'<ruby>上達部<rt>かんだちめ</rt></ruby>、<ruby>親王<rt>みこ</rt></ruby>たちには女の御装束ひ、それより下に[[ほど]]につけつつ賜ふ。',src:'宇津保',t:'上達部や、親王たちには女のご装束を、それより下には[[身分]]に応じて（褒美を）くださる。',a:'身分'},
+  {w:'ほど',s:'<ruby>比叡<rt>ひえ</rt></ruby>の山を二十ばかり重ね上げたらむ[[ほど]]して。',src:'伊勢',t:'（富士山の高さは）比叡山を二十くらい重ね上げたような[[程度]]で、',a:'程度'},
+  // やがて
+  {w:'やがて',s:'薬も食はず、[[やがて]]起きも上がらで病み臥せり。',src:'竹取',t:'薬も飲まず、[[そのまま]]起き上がらないで病み臥せっている。',a:'そのまま'},
+  {w:'やがて',s:'名を聞くより、[[やがて]]面影はおしはからるる心地するを、見るときは、またかかねて思ひつるままの顔したる人こそなけれ。',src:'徒然',t:'名前を聞くやいなや、[[すぐに]]顔つきが推察できる気持ちがするのに、会ってみると、また前から思った通りの顔をしている人はいない。',a:'すぐに'},
+  // すなはち
+  {w:'すなはち',s:'少将言ふばかりなく泣き惑ひて、帰りて[[すなはち]]法師になりにけり。',src:'宇津保',t:'少将は言いようもなく泣きうろたえて、帰って[[すぐに]]法師になってしまった。',a:'すぐに'},
+  {w:'すなはち',s:'おのづから短き運を悟りぬ。[[すなはち]]五十<ruby>歳<rt>いそぢ</rt></ruby>の春を迎へて家を出で、世を背けり。',src:'方丈',t:'自然と短い運を悟った。[[そこで]]五十歳の春を迎えて出家し、俗世から離れた。',a:'そこで'},
+  // なほ
+  {w:'なほ',s:'雨のいみじう降り暮らして、つとめても[[なほ]]いみじう降るに、ある人のがりやりし。',src:'伊勢',t:'雨がひどく降り続いて、翌朝も[[やはり]]ひどく降るときに、ある人のところに詠み贈った。',a:'やはり'},
+  // おのづから
+  {w:'おのづから',s:'母、物語など求めて見せ給ふに、げに[[おのづから]]慰みゆく。',src:'更級',t:'母が、物語などを探し求めてお見せになるので、[[自然に]]心が晴れていく。',a:'自然に'},
+  {w:'おのづから',s:'[[おのづから]]事のたよりありて、津の国の今の京に至れり。',src:'方丈',t:'[[偶然に]]何かの機会があって、摂津の国の新しい都に行った。',a:'偶然に'},
+  {w:'おのづから',s:'[[おのづから]]我をたづぬる人もあらば野中の松よ見きと語るな。',src:'金槐',t:'[[万一]]、私を探す人がいたならば、野原の中の松よ、（私を）見たと語らないでくれ。',a:'万一'},
+  // なかなか
+  {w:'なかなか',s:'[[なかなか]]ひなきことは聞かじなどと思して、出で給ひにけるなめり。',src:'堤',t:'[[中途半端に]]甲斐のないことは聞くまいなどとお思いになって、お帰りになったのだろう。',a:'中途半端に'},
+  {w:'なかなか',s:'心づきなきことあらん折は、[[なかなか]]その由を言ひてん。',src:'徒然',t:'気に入らないことがあるときは、[[かえって]]その理由を言ってしまう方がよい。',a:'かえって'},
+  // さすがに
+  {w:'さすがに',s:'消えも失せばやと思へども、[[さすがに]]捨てがたくてぞ過ごし侍る。',src:'住吉',t:'消え失せてしまいたいと思うけれども、[[そうはいうものの、やはり]]（命を）捨てられずに過ごしています。',a:'そうはいうものの'},
+  // あまた
+  {w:'あまた',s:'敵は[[あまた]]あり、そこにてつひに討たれにけり。',src:'平家',t:'敵は[[たくさん]]おり、そこでとうとう討ち取られてしまった。',a:'たくさん'},
+  // げに
+  {w:'げに',s:'物思ふ人の魂は、[[げに]]あくがるるものになむありける。',src:'源氏',t:'物思いをする人の魂は、[[なるほど]]身から離れてさまようものなのだなあ。',a:'なるほど'},
+  // いとど
+  {w:'いとど',s:'散ればこそ[[いとど]]桜はめでたけれ憂き世に何か久しかるべき。',src:'伊勢',t:'散るからこそ[[ますます]]桜はすばらしい。つらい世の中で何が久しく留まっていようか、いや久しく留まるものなどない。',a:'ますます'},
+  // やうやう
+  {w:'やうやう',s:'男、うちおどろきて見れば、月も[[やうやう]]山の端近くなりにたり。',src:'堤',t:'男が、ふと目を覚まして見ると、月も[[だんだん]]山の端近くなっていた。',a:'だんだん'},
+];
+
+// State
+let currentQuestions = [];
+let currentIndex = 0;
+let score = 0;
+let streak = 0;
+let maxStreak = 0;
+let wrongAnswers = [];
+let sessionWrong = [];
+let mode = 'casual';
+
+function shuffle(arr){
+  const a=[...arr];
+  for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}
+  return a;
+}
+
+function parseSentence(text){
+  return text.replace(/\[\[(.+?)\]\]/g,'<u>$1</u>');
+}
+function parseTranslation(text){
+  return text.replace(/\[\[(.+?)\]\]/g,'<span class="ans-highlight">$1</span>');
+}
+
+function getDistractors(correctAnswer, count){
+  const pool = [...new Set(Q.map(q=>q.a))].filter(a=>a!==correctAnswer);
+  return shuffle(pool).slice(0,count);
+}
+
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function showTitle(){
+  const wc = wrongAnswers.length;
+  const btn = document.getElementById('btn-wrong');
+  const lbl = document.getElementById('wrong-count-label');
+  if(wc>0){
+    btn.disabled=false;
+    lbl.textContent=wc+'問の間違いを復習しよう！';
+  } else {
+    btn.disabled=true;
+    lbl.textContent='まだ間違いがありません';
+  }
+  showScreen('s-title');
+}
+
+function startQuiz(m){
+  mode = m;
+  score = 0; streak = 0; maxStreak = 0; sessionWrong = [];
+  currentIndex = 0;
+
+  if(m==='casual'){
+    currentQuestions = shuffle(Q).slice(0,15);
+  } else if(m==='all'){
+    currentQuestions = shuffle(Q);
+  } else {
+    if(wrongAnswers.length===0){alert('間違えた問題がありません！');return;}
+    currentQuestions = shuffle(wrongAnswers);
+  }
+  showScreen('s-quiz');
+  showQuestion();
+}
+
+function showQuestion(){
+  const q = currentQuestions[currentIndex];
+  const total = currentQuestions.length;
+
+  document.getElementById('q-counter').textContent = (currentIndex+1)+' / '+total;
+  document.getElementById('score-disp').textContent = score;
+  document.getElementById('streak-disp').textContent = streak>=3 ? '🔥'+streak+'連続！' : '';
+  document.getElementById('progress-fill').style.width = ((currentIndex/total)*100)+'%';
+  document.getElementById('q-sentence').innerHTML = parseSentence(q.s);
+  document.getElementById('q-source').textContent = '〈'+q.src+'〉';
+
+  // Choices
+  const distractors = getDistractors(q.a, 3);
+  const choices = shuffle([q.a, ...distractors]);
+  const container = document.getElementById('choices');
+  container.innerHTML = '';
+  choices.forEach(c=>{
+    const btn = document.createElement('button');
+    btn.className = 'choice-btn';
+    btn.textContent = c;
+    btn.onclick = ()=>answer(c, q.a, btn);
+    container.appendChild(btn);
+  });
+}
+
+function answer(chosen, correct, btn){
+  const isCorrect = chosen === correct;
+  const allBtns = document.querySelectorAll('.choice-btn');
+
+  allBtns.forEach(b=>{
+    b.classList.add('disabled');
+    if(b.textContent===correct) b.classList.add('show-correct');
+  });
+
+  if(isCorrect){
+    btn.classList.remove('disabled');
+    btn.classList.add('correct');
+    score += 10 + Math.min(streak*2,20);
+    streak++;
+    maxStreak = Math.max(maxStreak,streak);
+  } else {
+    btn.classList.remove('disabled');
+    btn.classList.add('wrong');
+    streak = 0;
+    const q = currentQuestions[currentIndex];
+    if(!sessionWrong.find(x=>x.s===q.s)) sessionWrong.push(q);
+    // Add to wrongAnswers pool
+    if(!wrongAnswers.find(x=>x.s===q.s)) wrongAnswers.push(q);
+  }
+
+  setTimeout(()=>showAnswer(isCorrect), 600);
+}
+
+function showAnswer(isCorrect){
+  const q = currentQuestions[currentIndex];
+  document.getElementById('ans-badge').textContent = isCorrect ? '⭕' : '❌';
+  const rt = document.getElementById('ans-result-text');
+  rt.textContent = isCorrect ? '正解！✨' : '不正解…正解は「'+q.a+'」';
+  rt.className = 'result-text '+(isCorrect?'ok':'ng');
+  document.getElementById('ans-sentence').innerHTML = parseSentence(q.s)+'<br><small style="color:#A0714F">〈'+q.src+'〉</small>';
+  document.getElementById('ans-translation').innerHTML = parseTranslation(q.t);
+
+  const isLast = currentIndex >= currentQuestions.length-1;
+  document.getElementById('next-btn').textContent = isLast ? '結果を見る 🏆' : '次の問題 →';
+  showScreen('s-answer');
+}
+
+function nextQuestion(){
+  currentIndex++;
+  if(currentIndex >= currentQuestions.length){
+    showResult();
+  } else {
+    showScreen('s-quiz');
+    showQuestion();
+  }
+}
+
+function showResult(){
+  const total = currentQuestions.length;
+  const correct = total - sessionWrong.length;
+  const pct = Math.round((correct/total)*100);
+
+  document.getElementById('final-score').textContent = score+'点';
+  const msgs = ['もう一回！💪','惜しい！😤','いい感じ！👍','すごい！🌟','完璧！🎉'];
+  document.getElementById('final-msg').textContent = msgs[Math.floor(pct/21)] || '完璧！🎉';
+  document.getElementById('res-correct').textContent = correct+' / '+total;
+  document.getElementById('res-wrong').textContent = sessionWrong.length+' 問';
+  document.getElementById('res-streak').textContent = maxStreak+' 連続';
+
+  const rwb = document.getElementById('res-wrong-btn');
+  if(sessionWrong.length>0){
+    rwb.style.display='block';
+    rwb.textContent='❌ 間違い直しをする（'+sessionWrong.length+'問）';
+  } else {
+    rwb.style.display='none';
+  }
+
+  showScreen('s-result');
+}
+
+// Init
+showTitle();
+</script>
+</body>
+</html>
